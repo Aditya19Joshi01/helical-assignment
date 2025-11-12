@@ -40,3 +40,6 @@ Thumbs.db
 *.log
 logs/
 tmp/
+
+# --- Other ---
+helical-model/data/sample_data.h5ad
