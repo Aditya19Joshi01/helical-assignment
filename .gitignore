@@ -1,0 +1,42 @@
+# --- Python environment ---
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pytest_cache/
+.env
+
+# --- Airflow runtime directories ---
+# Generated automatically when airflow-init runs
+airflow/logs/
+airflow/config/
+airflow/plugins/__pycache__/
+airflow/plugins/*.pyc
+airflow/dags/__pycache__/
+airflow/dags/*.pyc
+
+# --- Airflow database ---
+# Avoid committing Postgres data volume or SQLite DBs
+airflow/airflow.db
+airflow/unittests.cfg
+
+# --- Docker files ---
+# Ignore local build cache and volumes
+**/.dockerignore
+**/docker-compose.override.yml
+
+# --- System files ---
+.DS_Store
+Thumbs.db
+
+# --- VSCode / IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Logs and temp files ---
+*.log
+logs/
+tmp/
