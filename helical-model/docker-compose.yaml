@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  helical-model:
+    image: helical-model:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: helical-model
+    networks:
+      - airflow-network
+    volumes:
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+      - ./scripts:/app/scripts
+    environment:
+      ENV_VAR: "default_value"
+    # Optional: disable auto-start script so it's idle until Airflow triggers it
+    command: ["sleep", "infinity"]
+
+networks:
+  airflow-network:
+    external: true

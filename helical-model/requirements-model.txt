@@ -4,3 +4,8 @@ anndata
 numpy
 pandas
 torch
+datetime
+datasets
+scikit-learn
+matplotlib
+seaborn

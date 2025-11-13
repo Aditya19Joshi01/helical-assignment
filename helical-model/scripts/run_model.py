@@ -1,3 +1,4 @@
+from datetime import datetime
 import anndata as ad
 import numpy as np
 import pandas as pd
@@ -6,17 +7,23 @@ from helical.models.geneformer import GeneformerConfig, GeneformerFineTuningMode
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 
-# === OUTPUT SETUP ===
-OUTPUT_DIR = "/app/outputs"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-
-# === LOCAL DATA PATH ===
+# === INPUT / OUTPUT SETUP ===
 LOCAL_DATA_PATH = "/app/data/sample_data.h5ad"
+BASE_OUTPUT_DIR = "/app/outputs"
+
+# Extract base name of input file (without extension)
+input_name = os.path.splitext(os.path.basename(LOCAL_DATA_PATH))[0]
+
+# Create unique run directory using timestamp
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+RUN_OUTPUT_DIR = os.path.join(BASE_OUTPUT_DIR, f"{input_name}_{timestamp}")
+os.makedirs(RUN_OUTPUT_DIR, exist_ok=True)
+
+print(f"📁 Creating new output directory for this run: {RUN_OUTPUT_DIR}")
 
 # === LOAD DATASET ===
 print(f"📥 Loading local dataset: {LOCAL_DATA_PATH}")
 adata = ad.read_h5ad(LOCAL_DATA_PATH)
-
 print(f"✅ Loaded dataset with shape: {adata.shape}")
 
 # 🔹 Reduce number of genes for speed
@@ -81,7 +88,7 @@ geneformer_fine_tune.train(train_dataset=dataset, label="cell_types")
 print("⚙️ Getting logits from fine-tuned model...")
 outputs = geneformer_fine_tune.get_outputs(dataset)
 outputs_df = pd.DataFrame(outputs)
-outputs_df.to_csv(os.path.join(OUTPUT_DIR, "raw_logits.csv"), index=False)
+outputs_df.to_csv(os.path.join(RUN_OUTPUT_DIR, "raw_logits.csv"), index=False)
 
 # === POST-PROCESS LOGITS TO LABELS ===
 print("🧩 Converting logits to predicted cell types...")
@@ -92,18 +99,17 @@ results_df = pd.DataFrame({
     "True_Cell_Type": [reverse_class_dict[c] for c in dataset["cell_types"]],
     "Predicted_Cell_Type": predicted_labels
 })
-results_df.to_csv(os.path.join(OUTPUT_DIR, "predicted_celltypes.csv"), index=False)
-print(f"✅ Saved readable predictions → {OUTPUT_DIR}/predicted_celltypes.csv")
+results_df.to_csv(os.path.join(RUN_OUTPUT_DIR, "predicted_celltypes.csv"), index=False)
+print(f"✅ Saved readable predictions → {RUN_OUTPUT_DIR}/predicted_celltypes.csv")
 
 # === EMBEDDINGS ===
 print("⚙️ Getting embeddings from fine-tuned model...")
 embeddings = geneformer_fine_tune.get_embeddings(dataset)
-np.save(os.path.join(OUTPUT_DIR, "fine_tuned_embeddings.npy"), embeddings)
+np.save(os.path.join(RUN_OUTPUT_DIR, "fine_tuned_embeddings.npy"), embeddings)
 
 # === VISUALIZATION ===
 print("📊 Running PCA for quick visualization...")
 
-# Clean up NaN or infinite values before PCA
 mask = np.isfinite(embeddings).all(axis=1)
 clean_embeddings = embeddings[mask]
 
@@ -127,7 +133,7 @@ else:
     plt.xlabel("PC1")
     plt.ylabel("PC2")
     plt.tight_layout()
-    plt.savefig(os.path.join(OUTPUT_DIR, "embedding_plot.png"))
-    print(f"✅ Saved embedding_plot.png → {OUTPUT_DIR}/embedding_plot.png")
+    plt.savefig(os.path.join(RUN_OUTPUT_DIR, "embedding_plot.png"))
+    print(f"✅ Saved embedding_plot.png → {RUN_OUTPUT_DIR}/embedding_plot.png")
 
 print("🎉 Fine-tuning complete — outputs generated successfully!")
