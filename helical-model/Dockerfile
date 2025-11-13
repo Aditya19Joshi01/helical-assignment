@@ -7,9 +7,8 @@ RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 # Install dependencies
 COPY requirements-model.txt .
 RUN pip install --no-cache-dir -r requirements-model.txt
-
-# Only copy data (optional)
-COPY ./data /app/data
-
+RUN pip install datasets
+RUN pip install scikit-learn
+RUN pip install matplotlib
 # Default command
 CMD ["python", "scripts/run_model.py"]
