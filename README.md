@@ -95,7 +95,6 @@ helical-model/outputs/<input_file_timestamp>/
 
 ## 📌 Next Steps
 
-  * Add Airflow task for result summarization
   * Add observability using Prometheus/Grafana
   * Push outputs to S3 / cloud storage
   * Introduce scheduled DAG runs

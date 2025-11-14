@@ -7,9 +7,9 @@ This directory contains the **Airflow environment** for orchestrating the Helica
 ## 🧱 Components
 
 * `docker-compose.yml` — Spins up the core Airflow services: **webserver**, **scheduler**, **worker**, **Redis**, and **PostgreSQL** (metadata database).
-* `dags/helical_dag.py` — Defines the main Airflow DAG (`helical_fine_tune_dag`) to execute the Helical model container.
+* `dags/helical_dag.py` — Defines the main Airflow DAG (`helical_fine_tune_dag`) to spin up, execute and destroy the Helical model container.
 * `logs/`, `plugins/`, `config/` — Standard Airflow support directories for logs, custom plugins, and configuration files.
-* **Shared Docker Network** (`helical_network`) — Created in the main project `docker-compose` setup to enable secure communication between Airflow and the separate `helical-model` container.
+* **Shared Docker Network** (`airflow-network`) — Created manually by running `docker network create airflow-network`' to enable secure communication between Airflow and the separate `helical-model` container.
 
 ---
 
@@ -51,6 +51,7 @@ The execution flow involves:
 2.  **Mounts** local data and script directories (`/app/data`, `/app/scripts`, `/app/outputs`).
 3.  **Executes** the `run_model.py` script inside the container.
 4.  **Writes** outputs to timestamped directories inside the shared `/outputs` volume.
+5.  **Cleans up** the model container after successful execution.
 
 -----
 

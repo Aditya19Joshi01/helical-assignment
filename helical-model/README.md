@@ -43,6 +43,7 @@ This script contains the core logic for the fine-tuning process:
 * **Data Loading:** Loads the required local `.h5ad` dataset from `/app/data/sample_data.h5ad`.
 * **Preprocessing:** Reduces the feature count (e.g., to **3000 genes**) to speed up the fine-tuning process for demonstration.
 * **Fine-Tuning:** Initializes and fine-tunes the **Geneformer** model on the loaded data.
+* **Print Metadata:** Outputs dataset shape and other relevant information to the console for verification.
 * **Artifact Generation:** Generates the following output files:
     * `raw_logits.csv`
     * `predicted_celltypes.csv`
@@ -101,7 +102,6 @@ outputs/
     ├── raw_logits.csv
     ├── predicted_celltypes.csv
     ├── fine_tuned_embeddings.npy
-    ├── embedding_plot.png
 ```
 
 -----
@@ -114,6 +114,5 @@ outputs/
 
 ### 🧩 Next Steps
 
-  * Add a `metadata.json` file for run tracking (e.g., commit hash, hyperparameters).
   * Log execution metrics (time taken, loss, accuracy, etc.) from `run_model.py`.
   * Extend the pipeline with post-processing or evaluation scripts to be run in subsequent Airflow tasks.

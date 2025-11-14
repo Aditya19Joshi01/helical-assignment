@@ -1,6 +1,7 @@
 from datetime import datetime
 from airflow import DAG
-from airflow.providers.docker.operators.docker import DockerOperator, EmptyOperator
+from airflow.providers.docker.operators.docker import DockerOperator
+from airflow.operators.empty import EmptyOperator
 from airflow.utils.dates import days_ago
 from docker.types import Mount
 
@@ -26,7 +27,8 @@ with DAG(
         task_id="run_helical_model",
         image="helical-model:latest",
         api_version="auto",
-        auto_remove="success",   # ✅ fixed
+        auto_remove="success",
+        mount_tmp_dir=False,
         command="python /app/scripts/run_model.py",
         docker_url="unix://var/run/docker.sock",
         network_mode="airflow-network",
@@ -48,6 +50,7 @@ with DAG(
                 type="bind",
             ),
         ],
+
         environment={
             "ENV_VAR": "default_value",
         },
@@ -55,4 +58,4 @@ with DAG(
 
     end = EmptyOperator(task_id="end")
 
-    run_helical_container
+    start >> run_helical_container >> end
