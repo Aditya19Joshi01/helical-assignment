@@ -10,7 +10,6 @@ import time
 # =====================================================================
 from prometheus_client import (
     start_http_server,
-    Counter,
     Gauge,
     Histogram
 )
@@ -19,9 +18,14 @@ from prometheus_client import (
 start_http_server(8000)
 
 # Metrics
-MODEL_RUNS = Counter(
-    'helical_model_runs_total',
-    'Total number of Helical model executions'
+MODEL_STATUS = Gauge(
+    'helical_model_status',
+    'Model execution status: 1=running, 0=idle'
+)
+
+MODEL_RUN_COMPLETED = Gauge(
+    'helical_model_run_completed',
+    'Unique run ID that increments after each completed run'
 )
 
 MODEL_DURATION = Histogram(
@@ -44,16 +48,14 @@ GENES_PROCESSED = Gauge(
     'Number of genes processed'
 )
 
-MODEL_STATUS = Gauge(
-    'helical_model_status',
-    'Model execution status: 1=running, 0=idle'
-)
-
 # Mark model as running
 MODEL_STATUS.set(1)
-MODEL_RUNS.inc()
-overall_start = time.time()
 
+# Unique run identifier for dashboards
+run_id = int(time.time())
+MODEL_RUN_COMPLETED.set(run_id)
+
+overall_start = time.time()
 
 # =====================================================================
 # 1. INPUT / OUTPUT SETUP
@@ -69,7 +71,6 @@ RUN_OUTPUT_DIR = os.path.join(BASE_OUTPUT_DIR, f"{input_name}_{timestamp}")
 os.makedirs(RUN_OUTPUT_DIR, exist_ok=True)
 
 print(f"\n📁 Output directory: {RUN_OUTPUT_DIR}\n")
-
 
 # =====================================================================
 # 2. LOAD AND PREPROCESS DATA
@@ -87,7 +88,6 @@ GENES_PROCESSED.set(adata.shape[1])
 adata = adata[:, :3000]
 print(f"🔹 Reduced to 3000 genes → shape: {adata.shape}")
 
-
 print("\n🔍 Detecting label column in cell metadata...")
 label_col = next(
     (col for col in ["LVL1", "cell_type", "celltype", "label"] if col in adata.obs),
@@ -102,7 +102,6 @@ label_set = sorted(set(cell_types))
 
 print(f"🧬 Label column: {label_col}")
 print(f"🧬 Unique labels ({len(label_set)}): {label_set}\n")
-
 
 # =====================================================================
 # 3. MODEL CONFIGURATION
@@ -122,7 +121,6 @@ model = GeneformerFineTuningModel(
     fine_tuning_head="classification",
     output_size=len(label_set)
 )
-
 
 # =====================================================================
 # 4. DATA PROCESSING FOR MODEL
@@ -145,9 +143,8 @@ dataset = dataset.map(
 dataset = dataset.select(range(min(200, len(dataset))))
 print(f"⚡ Using {len(dataset)} samples\n")
 
-
 # =====================================================================
-# 5. PRINT MODEL METADATA
+# 5. METADATA PRINT
 # =====================================================================
 
 print("\n==================== MODEL METADATA ====================")
@@ -171,7 +168,6 @@ print(f"Labels:                   {label_set}")
 print(f"Samples Used:             {len(dataset)}")
 print("=========================================================\n")
 
-
 # =====================================================================
 # 6. TRAINING
 # =====================================================================
@@ -185,7 +181,6 @@ train_duration = time.time() - train_start
 TRAINING_DURATION.observe(train_duration)
 
 print(f"✅ Fine-tuning complete in {train_duration:.2f} seconds\n")
-
 
 # =====================================================================
 # 7. INFERENCE
@@ -207,7 +202,6 @@ results_df.to_csv(os.path.join(RUN_OUTPUT_DIR, "predicted_celltypes.csv"), index
 
 print("📄 Saved prediction files\n")
 
-
 # =====================================================================
 # 8. EMBEDDINGS
 # =====================================================================
@@ -217,7 +211,6 @@ embeddings = model.get_embeddings(dataset)
 np.save(os.path.join(RUN_OUTPUT_DIR, "fine_tuned_embeddings.npy"), embeddings)
 
 print("📄 Saved fine_tuned_embeddings.npy\n")
-
 
 # =====================================================================
 # 9. END OF SCRIPT — UPDATE METRICS
@@ -230,6 +223,5 @@ MODEL_STATUS.set(0)
 
 print(f"🎉 All tasks completed successfully in {exec_duration:.2f} seconds!")
 
-
-# Wait a little so Prometheus can scrape at least once
+# Wait so Prometheus can scrape once
 time.sleep(5)
