@@ -3,8 +3,56 @@ import os
 import numpy as np
 import pandas as pd
 import anndata as ad
+import time
 
-from helical.models.geneformer import GeneformerConfig, GeneformerFineTuningModel
+# =====================================================================
+# PROMETHEUS METRICS EXPORTER
+# =====================================================================
+from prometheus_client import (
+    start_http_server,
+    Counter,
+    Gauge,
+    Histogram
+)
+
+# Start Prometheus metrics HTTP server on port 8000
+start_http_server(8000)
+
+# Metrics
+MODEL_RUNS = Counter(
+    'helical_model_runs_total',
+    'Total number of Helical model executions'
+)
+
+MODEL_DURATION = Histogram(
+    'helical_model_duration_seconds',
+    'Total runtime of the model execution'
+)
+
+TRAINING_DURATION = Histogram(
+    'helical_training_duration_seconds',
+    'Duration of the fine-tuning stage'
+)
+
+SAMPLES_PROCESSED = Gauge(
+    'helical_samples_processed_total',
+    'Number of samples (cells) processed'
+)
+
+GENES_PROCESSED = Gauge(
+    'helical_genes_processed_total',
+    'Number of genes processed'
+)
+
+MODEL_STATUS = Gauge(
+    'helical_model_status',
+    'Model execution status: 1=running, 0=idle'
+)
+
+# Mark model as running
+MODEL_STATUS.set(1)
+MODEL_RUNS.inc()
+overall_start = time.time()
 
 
 # =====================================================================
@@ -31,11 +79,15 @@ print(f"📥 Loading dataset: {LOCAL_DATA_PATH}")
 adata = ad.read_h5ad(LOCAL_DATA_PATH)
 print(f"✅ Loaded dataset — shape: {adata.shape}")
 
-# Reduce to first 3000 genes for speed
+# Capture metrics
+SAMPLES_PROCESSED.set(adata.shape[0])
+GENES_PROCESSED.set(adata.shape[1])
+
+# Reduce genes for speed
 adata = adata[:, :3000]
 print(f"🔹 Reduced to 3000 genes → shape: {adata.shape}")
 
-# Detect label column
+
 print("\n🔍 Detecting label column in cell metadata...")
 label_col = next(
     (col for col in ["LVL1", "cell_type", "celltype", "label"] if col in adata.obs),
@@ -55,6 +107,8 @@ print(f"🧬 Unique labels ({len(label_set)}): {label_set}\n")
 # =====================================================================
 # 3. MODEL CONFIGURATION
 # =====================================================================
+
+from helical.models.geneformer import GeneformerConfig, GeneformerFineTuningModel
 
 print("🧠 Initializing Geneformer...")
 
@@ -77,10 +131,9 @@ model = GeneformerFineTuningModel(
 print("🔧 Processing dataset for Geneformer...")
 dataset = model.process_data(adata)
 
-# Add labels
 dataset = dataset.add_column("cell_types", cell_types)
 
-# Convert labels to integer IDs
+# Encode labels
 class_to_id = {cls: i for i, cls in enumerate(label_set)}
 id_to_class = {v: k for k, v in class_to_id.items()}
 
@@ -89,13 +142,12 @@ dataset = dataset.map(
     num_proc=1
 )
 
-# Smaller subset for speed
 dataset = dataset.select(range(min(200, len(dataset))))
 print(f"⚡ Using {len(dataset)} samples\n")
 
 
 # =====================================================================
-# 5. PRINT MODEL + DATA METADATA
+# 5. PRINT MODEL METADATA
 # =====================================================================
 
 print("\n==================== MODEL METADATA ====================")
@@ -104,8 +156,6 @@ model_name = cfg.config["model_name"]
 
 print(f"Model Name:               {model_name}")
 print(f"Batch Size:               {cfg.config['batch_size']}")
-print(f"Embedding Layer:          {cfg.config['emb_layer']}")
-print(f"Embedding Mode:           {cfg.config['emb_mode']}")
 print(f"Device:                   {cfg.config['device']}")
 print(f"Nproc (Workers):          {cfg.config['nproc']}")
 
@@ -113,15 +163,12 @@ info = cfg.model_map[model_name]
 print("\n--- Model Architecture ---")
 print(f"Input Size:               {info['input_size']}")
 print(f"Embedding Size:           {info['embsize']}")
-print(f"Special Token:            {info['special_token']}")
 print(f"Model Version:            {info['model_version']}")
 
 print("\n--- Dataset Info ---")
 print(f"Classes:                  {len(label_set)}")
 print(f"Labels:                   {label_set}")
 print(f"Samples Used:             {len(dataset)}")
-print(f"Input File:               {LOCAL_DATA_PATH}")
-print(f"Output Directory:         {RUN_OUTPUT_DIR}")
 print("=========================================================\n")
 
 
@@ -130,12 +177,18 @@ print("=========================================================\n")
 # =====================================================================
 
 print("🚀 Starting fine-tuning...")
+train_start = time.time()
+
 model.train(train_dataset=dataset, label="cell_types")
-print("✅ Fine-tuning complete\n")
+
+train_duration = time.time() - train_start
+TRAINING_DURATION.observe(train_duration)
+
+print(f"✅ Fine-tuning complete in {train_duration:.2f} seconds\n")
 
 
 # =====================================================================
-# 7. INFERENCE (LOGITS + LABELS)
+# 7. INFERENCE
 # =====================================================================
 
 print("⚙️ Running inference...")
@@ -164,4 +217,19 @@ embeddings = model.get_embeddings(dataset)
 np.save(os.path.join(RUN_OUTPUT_DIR, "fine_tuned_embeddings.npy"), embeddings)
 
 print("📄 Saved fine_tuned_embeddings.npy\n")
-print("🎉 All tasks completed successfully!")
+
+
+# =====================================================================
+# 9. END OF SCRIPT — UPDATE METRICS
+# =====================================================================
+
+exec_duration = time.time() - overall_start
+MODEL_DURATION.observe(exec_duration)
+
+MODEL_STATUS.set(0)
+
+print(f"🎉 All tasks completed successfully in {exec_duration:.2f} seconds!")
+
+
+# Wait a little so Prometheus can scrape at least once
+time.sleep(5)

@@ -8,3 +8,4 @@ datetime
 datasets
 scikit-learn
 matplotlib
+prometheus-client

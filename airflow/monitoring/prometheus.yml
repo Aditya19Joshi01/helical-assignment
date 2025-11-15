@@ -6,3 +6,17 @@ scrape_configs:
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
+
+  - job_name: 'airflow'
+    static_configs:
+      - targets: [ 'statsd-exporter:9102' ]
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: [ 'cadvisor:8080' ]
+
+  - job_name: 'helical-model'
+    static_configs:
+      - targets: [ 'helical-model-run:8000' ]
+    scrape_interval: 5s
+    scrape_timeout: 4s

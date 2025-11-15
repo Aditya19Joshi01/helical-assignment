@@ -26,6 +26,7 @@ with DAG(
     run_helical_container = DockerOperator(
         task_id="run_helical_model",
         image="helical-model:latest",
+        container_name="helical-model-run",
         api_version="auto",
         auto_remove="success",
         mount_tmp_dir=False,
