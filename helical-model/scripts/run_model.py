@@ -11,50 +11,45 @@ import time
 from prometheus_client import (
     start_http_server,
     Gauge,
-    Histogram
+    Counter
 )
 
 # Start Prometheus metrics HTTP server on port 8000
 start_http_server(8000)
 
-# Metrics
+# Metrics that PERSIST after container stops
+MODEL_RUNS_TOTAL = Counter(
+    'helical_model_runs_total',
+    'Total number of completed model runs'
+)
+
 MODEL_STATUS = Gauge(
     'helical_model_status',
     'Model execution status: 1=running, 0=idle'
 )
 
-MODEL_RUN_COMPLETED = Gauge(
-    'helical_model_run_completed',
-    'Unique run ID that increments after each completed run'
-)
-
-MODEL_DURATION = Histogram(
+MODEL_DURATION = Gauge(
     'helical_model_duration_seconds',
-    'Total runtime of the model execution'
+    'Duration of last completed model run'
 )
 
-TRAINING_DURATION = Histogram(
+TRAINING_DURATION = Gauge(
     'helical_training_duration_seconds',
-    'Duration of the fine-tuning stage'
+    'Duration of training in last run'
 )
 
 SAMPLES_PROCESSED = Gauge(
     'helical_samples_processed_total',
-    'Number of samples (cells) processed'
+    'Number of samples processed in last run'
 )
 
 GENES_PROCESSED = Gauge(
     'helical_genes_processed_total',
-    'Number of genes processed'
+    'Number of genes processed in last run'
 )
 
 # Mark model as running
 MODEL_STATUS.set(1)
-
-# Unique run identifier for dashboards
-run_id = int(time.time())
-MODEL_RUN_COMPLETED.set(run_id)
-
 overall_start = time.time()
 
 # =====================================================================
@@ -178,7 +173,7 @@ train_start = time.time()
 model.train(train_dataset=dataset, label="cell_types")
 
 train_duration = time.time() - train_start
-TRAINING_DURATION.observe(train_duration)
+TRAINING_DURATION.set(train_duration)  # CHANGED from observe
 
 print(f"✅ Fine-tuning complete in {train_duration:.2f} seconds\n")
 
@@ -217,11 +212,13 @@ print("📄 Saved fine_tuned_embeddings.npy\n")
 # =====================================================================
 
 exec_duration = time.time() - overall_start
-MODEL_DURATION.observe(exec_duration)
+MODEL_DURATION.set(exec_duration)  # CHANGED from observe
 
 MODEL_STATUS.set(0)
+MODEL_RUNS_TOTAL.inc()  # Increment run counter
 
 print(f"🎉 All tasks completed successfully in {exec_duration:.2f} seconds!")
 
-# Wait so Prometheus can scrape once
-time.sleep(5)
+# Keep metrics server alive longer so Prometheus can scrape
+print("⏳ Keeping metrics available for Prometheus...")
+time.sleep(30)  # CHANGED from 5 to 30 seconds
