@@ -4,12 +4,18 @@ from airflow.providers.docker.operators.docker import DockerOperator
 from airflow.operators.empty import EmptyOperator
 from airflow.utils.dates import days_ago
 from docker.types import Mount
+import os
 
 default_args = {
     "owner": "airflow",
     "depends_on_past": False,
     "retries": 0,
 }
+
+# Load environment variables passed from docker-compose
+DATA_DIR = os.getenv("HELICAL_DATA_PATH")
+OUTPUT_DIR = os.getenv("HELICAL_OUTPUT_PATH")
+SCRIPTS_DIR = os.getenv("HELICAL_SCRIPTS_PATH")
 
 with DAG(
     dag_id="helical_fine_tune_dag",
@@ -35,21 +41,9 @@ with DAG(
         network_mode="airflow-network",
 
         mounts=[
-            Mount(
-                source="C:/Users/ajhas/Desktop/Projects/helical-assignment/helical-model/data",
-                target="/app/data",
-                type="bind",
-            ),
-            Mount(
-                source="C:/Users/ajhas/Desktop/Projects/helical-assignment/helical-model/outputs",
-                target="/app/outputs",
-                type="bind",
-            ),
-            Mount(
-                source="C:/Users/ajhas/Desktop/Projects/helical-assignment/helical-model/scripts",
-                target="/app/scripts",
-                type="bind",
-            ),
+            Mount(source=DATA_DIR, target="/app/data", type="bind"),
+            Mount(source=OUTPUT_DIR, target="/app/outputs", type="bind"),
+            Mount(source=SCRIPTS_DIR, target="/app/scripts", type="bind"),
         ],
 
         environment={
