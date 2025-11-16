@@ -1,35 +1,98 @@
-# 🧬 Helical Geneformer Workflow — Airflow Orchestrated ML Pipeline
+# Helical Geneformer Workflow — Containerized ML Pipeline Orchestrated with Airflow
 
-This repository demonstrates a **containerized machine learning pipeline** for running and orchestrating fine-tuning of the **Helical Geneformer** model using **Docker** and **Apache Airflow**.
+This repository implements a **containerized machine learning workflow** for running and fine-tuning the **Helical Geneformer** model using **Docker** and **Apache Airflow**, complete with **metrics**, **monitoring**, and a clean orchestration design.
 
-It was built as part of a technical assignment to showcase containerization, orchestration, and reproducible ML workflows.
+This project was built as part of the *Cloud & Container Engineering* technical assignment for Helical and demonstrates:
 
----
-
-## 🚀 Overview
-
-The setup includes:
-* **Helical Model Container (`helical-model/`)**
-    A self-contained Python environment with the Helical library and dependencies installed.
-* **Apache Airflow Orchestration (`airflow/`)**
-    Runs as a separate service (via `docker-compose`) to manage and execute the Helical workflow as a DAG.
-* **Local Data Integration**
-    Uses a local `.h5ad` dataset instead of downloading from the web.
-* **Automated Output Storage**
-    Each run generates results in a timestamped directory under `/outputs`, ensuring all runs are archived separately.
+* Containerization of ML workloads
+* Workflow orchestration via Airflow
+* Observability with Prometheus + Grafana
 
 ---
 
-## ⚙️ Setup Guide
+## Architecture Overview
 
-### 1️⃣ Build the Model Container
+The workflow is composed of two major components:
+
+1. **Helical Model Container** — runs the actual fine-tuning job
+2. **Airflow Cluster** — orchestrates, schedules, and monitors the workflow
+
+It is supported by an observability stack (Prometheus, StatsD exporter, cAdvisor, Grafana).
+
+### High-Level Architecture Diagram
+
+![Architecture](./Architecture.png)
+
+---
+
+## 🚀 End-to-End Workflow Summary
+
+1. **Airflow DAG** triggers a run → uses `DockerOperator`
+2. DAG launches the **`helical-model`** container
+3. Container mounts:
+
+   * `/app/data` → local input dataset (`.h5ad`)
+   * `/app/scripts` → fine-tuning script
+   * `/app/outputs` → timestamped results
+4. Model script:
+
+   * Loads & preprocesses data
+   * Fine-tunes Geneformer
+   * Runs inference
+   * Generates embeddings & visualizations
+   * Exports Prometheus metrics
+5. Outputs are stored locally:
+
+   ```
+   helical-model/outputs/<dataset_timestamp>/
+   ```
+6. Prometheus scrapes Airflow + model metrics
+7. Grafana visualizes:
+
+   * DAG run times
+   * Task success/failure counts
+   * Container CPU/memory usage
+   * Model execution metrics
+
+---
+
+## 🗂️ Repository Structure
+
+```
+helical-assignment/
+├── Architecture.png                 # Architecture diagram
+├── README.md                        # Main documentation (this file)
+│
+├── helical-model/                   # Model container
+│   ├── Dockerfile
+│   ├── docker-compose.yaml
+│   ├── requirements-model.txt
+│   ├── data/                        # Input .h5ad dataset
+│   ├── outputs/                     # Timestamped model outputs
+│   └── scripts/                     # run_model.py
+│
+└── airflow/                         # Airflow cluster + monitoring
+    ├── docker-compose.yaml
+    ├── dags/helical_dag.py
+    ├── monitoring/
+    │   ├── prometheus.yml
+    │   ├── statsd_mapping.yml
+    │   └── grafana/
+    └── logs/                        # Generated at runtime
+```
+
+---
+
+## ⚙️ Setup Instructions
+
+### 1️⃣ Build the Helical Model Container
 
 ```bash
 cd helical-model
 docker build -t helical-model:latest .
-````
+```
 
-### 2️⃣ Run the Model Container Manually (for testing)
+### 2️⃣ (Optional) Run Model Container Manually
 
 ```bash
 docker run -it --rm \
@@ -39,70 +102,104 @@ docker run -it --rm \
   helical-model
 ```
 
-### 3️⃣ Set Up Airflow Environment
+### 3️⃣ Start Airflow + Monitoring Stack
 
-Move into the `airflow/` directory and run:
+From inside `airflow/`:
 
 ```bash
-cd ../airflow
+docker network create airflow-network
 docker-compose up airflow-init
-docker-compose up
+docker-compose up -d
 ```
 
-This starts:
+Airflow UI → **[http://localhost:8080](http://localhost:8080)**
+Prometheus → **[http://localhost:9090](http://localhost:9090)**
+Grafana → **[http://localhost:3000](http://localhost:3000)** (admin/admin)
+cAdvisor → **[http://localhost:8081](http://localhost:8081)**
 
-  * Airflow Webserver at **http://localhost:8080** (default credentials: `airflow` / `airflow`)
-  * Scheduler, Worker, Redis, and Postgres containers.
+### 4️⃣ Trigger the Workflow
 
-### 4️⃣ Running the Helical DAG
+1. Open Airflow UI
+2. Enable `helical_fine_tune_dag`
+3. Trigger manually
+4. Track logs in Airflow
 
-Once Airflow is up:
+---
 
-1.  Open the Airflow UI → DAGs page.
-2.  Enable and trigger the DAG named `helical_fine_tune_dag`.
-3.  Monitor logs and progress live from the Airflow UI.
+## 📁 Outputs Generated per Run
 
-Outputs will appear under `helical-model/outputs/<filename_timestamp>/`.
+Each execution produces a folder:
 
------
-
-## 📁 Outputs Generated
-
-Each run produces:
-
-  * `raw_logits.csv` — Model logits for each sample.
-  * `predicted_celltypes.csv` — True vs predicted cell type mapping.
-  * `fine_tuned_embeddings.npy` — Embedding vectors post fine-tuning.
-  * `embedding_plot.png` — PCA visualization of embeddings.
-
-All stored under:
-
-```bash
-helical-model/outputs/<input_file_timestamp>/
+```
+helical-model/outputs/<dataset_timestamp>/
+├── raw_logits.csv
+├── predicted_celltypes.csv
+└── fine_tuned_embeddings.npy
 ```
 
------
+---
 
-## 🧠 Key Features Demonstrated
+## 📊 Monitoring & Observability
 
-✅ Containerized ML environment
-✅ Airflow DAG orchestration
-✅ Local data mounting
-✅ Timestamp-based run directories
-✅ Successful end-to-end workflow execution
+### 🔹 Prometheus Metrics From Model
 
------
+* `helical_model_runs_total`
+* `helical_model_status`
+* `helical_model_duration_seconds`
+* `helical_training_duration_seconds`
+* `helical_samples_processed_total`
+* `helical_genes_processed_total`
 
-## 📌 Next Steps
+### 🔹 Airflow Metrics (via StatsD Exporter)
 
-  * Add observability using Prometheus/Grafana
-  * Push outputs to S3 / cloud storage
-  * Introduce scheduled DAG runs
-  * Add metadata logging (run duration, dataset stats)
+* DAG run duration
+* Task success/failure counts
+* Scheduler heartbeat
 
------
+### 🔹 Container Metrics (via cAdvisor)
 
-## 👨‍💻 Author
+* CPU usage
+* Memory consumption
+* Network I/O
+* Filesystem usage
 
-Aditya Joshi
+### 🔹 Grafana Dashboard
+
+A Grafana dashboard is automatically provisioned showing:
+
+* Airflow DAG timings
+* Task success/failure
+* Model run duration
+* Container usage (CPU/Memory)
+
+---
+
+## 🎯 Key Features Demonstrated
+
+* Fully containerized ML workflow
+* Reproducible orchestration with Airflow
+* DockerOperator-based ephemeral model containers
+* Local volume mounts for data & scripts
+* Timestamped output runs
+* Integrated Prometheus + Grafana monitoring
+* cAdvisor container metrics
+* Clean architecture & documentation
+
+---
+
+## Future Enhancements (What’s Next)
+
+* Move data storage to S3 / GCS
+* Replace local volume mounts with cloud storage (EFS / S3 FUSE)
+* CI/CD for container builds
+* Scheduled DAG runs
+* Metadata logging into a database
+* Production-ready scalable architecture for AWS ECS/EKS
+
+---
+
+## Author
+
+**Aditya Joshi**
+Cloud, DevOps, and Backend Engineering
 
