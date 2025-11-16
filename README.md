@@ -83,6 +83,45 @@ helical-assignment/
 
 ---
 
+## Prerequisites
+
+- Docker & Docker Compose installed
+- At least 8GB RAM allocated to Docker
+
+---
+
+## Configuration
+
+Before starting, you need to configure the local paths:
+
+### 1. Set up environment variables
+
+Copy the example environment file and update paths:
+```bash
+cd airflow
+cp .env.example .env
+```
+
+Edit `.env` and update the paths to match your local directory structure:
+```bash
+# On Linux/Mac:
+HELICAL_DATA_PATH=/home/youruser/helical-assignment/helical-model/data
+HELICAL_OUTPUT_PATH=/home/youruser/helical-assignment/helical-model/outputs
+HELICAL_SCRIPTS_PATH=/home/youruser/helical-assignment/helical-model/scripts
+
+# On Windows (using absolute paths):
+HELICAL_DATA_PATH=C:/Users/YourUsername/helical-assignment/helical-model/data
+HELICAL_OUTPUT_PATH=C:/Users/YourUsername/helical-assignment/helical-model/outputs
+HELICAL_SCRIPTS_PATH=C:/Users/YourUsername/helical-assignment/helical-model/scripts
+```
+
+### 2. Create Docker network
+```bash
+docker network create airflow-network
+```
+
+---
+
 ## ⚙️ Setup Instructions
 
 ### 1️⃣ Build the Helical Model Container
