@@ -25,7 +25,7 @@ It is supported by an observability stack (Prometheus, StatsD exporter, cAdvisor
 
 ---
 
-## 🚀 End-to-End Workflow Summary
+## End-to-End Workflow Summary
 
 1. **Airflow DAG** triggers a run → uses `DockerOperator`
 2. DAG launches the **`helical-model`** container
@@ -234,5 +234,5 @@ A Grafana dashboard is automatically provisioned showing:
 ## Author
 
 **Aditya Joshi**
-Cloud, DevOps, and Backend Engineering
+
 
