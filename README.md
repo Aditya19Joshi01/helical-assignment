@@ -56,7 +56,7 @@ It is supported by an observability stack (Prometheus, StatsD exporter, cAdvisor
 
 ---
 
-## 🗂️ Repository Structure
+## Repository Structure
 
 ```
 helical-assignment/
@@ -122,16 +122,16 @@ docker network create airflow-network
 
 ---
 
-## ⚙️ Setup Instructions
+## Setup Instructions
 
-### 1️⃣ Build the Helical Model Container
+### 1️. Build the Helical Model Container
 
 ```bash
 cd helical-model
 docker build -t helical-model:latest .
 ```
 
-### 2️⃣ (Optional) Run Model Container Manually
+### 2️. (Optional) Run Model Container Manually
 
 ```bash
 docker run -it --rm \
@@ -141,7 +141,13 @@ docker run -it --rm \
   helical-model
 ```
 
-### 3️⃣ Start Airflow + Monitoring Stack
+Or can be done using docker-compose as well:
+
+```bash
+docker-compose up -d
+```
+
+### 3️. Start Airflow + Monitoring Stack
 
 From inside `airflow/`:
 
@@ -156,7 +162,7 @@ Prometheus → **[http://localhost:9090](http://localhost:9090)**
 Grafana → **[http://localhost:3000](http://localhost:3000)** (admin/admin)
 cAdvisor → **[http://localhost:8081](http://localhost:8081)**
 
-### 4️⃣ Trigger the Workflow
+### 4. Trigger the Workflow
 
 1. Open Airflow UI
 2. Enable `helical_fine_tune_dag`
@@ -165,7 +171,7 @@ cAdvisor → **[http://localhost:8081](http://localhost:8081)**
 
 ---
 
-## 📁 Outputs Generated per Run
+## Outputs Generated per Run
 
 Each execution produces a folder:
 
@@ -178,9 +184,9 @@ helical-model/outputs/<dataset_timestamp>/
 
 ---
 
-## 📊 Monitoring & Observability
+## Monitoring & Observability
 
-### 🔹 Prometheus Metrics From Model
+### Prometheus Metrics From Model
 
 * `helical_model_runs_total`
 * `helical_model_status`
@@ -189,20 +195,20 @@ helical-model/outputs/<dataset_timestamp>/
 * `helical_samples_processed_total`
 * `helical_genes_processed_total`
 
-### 🔹 Airflow Metrics (via StatsD Exporter)
+### Airflow Metrics (via StatsD Exporter)
 
 * DAG run duration
 * Task success/failure counts
 * Scheduler heartbeat
 
-### 🔹 Container Metrics (via cAdvisor)
+### Container Metrics (via cAdvisor)
 
 * CPU usage
 * Memory consumption
 * Network I/O
 * Filesystem usage
 
-### 🔹 Grafana Dashboard
+### Grafana Dashboard
 
 A Grafana dashboard is automatically provisioned showing:
 
@@ -213,7 +219,7 @@ A Grafana dashboard is automatically provisioned showing:
 
 ---
 
-## 🎯 Key Features Demonstrated
+## Key Features Demonstrated
 
 * Fully containerized ML workflow
 * Reproducible orchestration with Airflow
@@ -222,18 +228,6 @@ A Grafana dashboard is automatically provisioned showing:
 * Timestamped output runs
 * Integrated Prometheus + Grafana monitoring
 * cAdvisor container metrics
-* Clean architecture & documentation
-
----
-
-## Future Enhancements (What’s Next)
-
-* Move data storage to S3 / GCS
-* Replace local volume mounts with cloud storage (EFS / S3 FUSE)
-* CI/CD for container builds
-* Scheduled DAG runs
-* Metadata logging into a database
-* Production-ready scalable architecture for AWS ECS/EKS
 
 ---
 
